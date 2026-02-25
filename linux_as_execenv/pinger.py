@@ -2,10 +2,10 @@ import requests
 from datetime import datetime, timedelta
 
 url_template = 'https://simurg.space/gen_file?data=obs&date={data}'
-now = datetime.now()
+current = datetime.now()
 
 while True:
-    data = now.strftime("%Y-%m-%d")
+    data = current.strftime("%Y-%m-%d")
     url = url_template.format(data = data)
 
     response = requests.get(url=url, stream=True)
@@ -14,4 +14,4 @@ while True:
         print(f"Last available data are for {data}")
         break
     else:
-        now = now - timedelta(days=1)
+        current = current - timedelta(days=1)
