@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append("../src")
 
 from math_demo import add, add_with_bug
@@ -14,8 +15,28 @@ def test_addtional_with_bug():
 
 def test_additional_duplicate():
     assert add(2,3) == 2 + 3
-    
+
+def test_additional_overcomplicated():
+    for i in range(0,2**32):
+        for j in range(0,2**32):
+            assert add(i,j) == sum([i, j])
+            assert add(i,-j) == sum([i, -j])
+            assert add(-i,j) == sum([-i, j])
+            assert add(-i,-j) == sum([-i, -j])
+
+
+def test_additional_reasonable():
+    assert add(2,2) == 4
+    assert add(0,0) == 0
+    assert add(6,7) == 13
+    assert add(-6,-7) == -13
+    assert add(-6,7) == -1
+    assert add(-7,0) == -7
+    assert add(7,0) == 7
+
+
 if __name__ == "__main__":
     test_addtional()
     test_addtional_with_bug()
-
+    test_additional_duplicate()
+    test_additional_overcomplicated()
