@@ -5,7 +5,7 @@ def test_ndfl_tier1():
 
 
 def test_ndfl_tier2():
-    assert calculate_ndfl_tax(4_000_000) == 512_000
+    assert calculate_ndfl_tax(4_000_000) == 552_000
 
 
 def test_ndfl_tier3():
