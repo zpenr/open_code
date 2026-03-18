@@ -1,4 +1,4 @@
-.PHONY: create-structure install-dep install test-pytest
+.PHONY: create-structure install-dep install test-pytest check-requirements
 
 create-structure:
 	mkdir -p src tests docs
@@ -15,3 +15,7 @@ test-pytest:
 	python3 -m pytest
 
 test:install-dep install test-pytest
+
+check-requirements:
+	pip install pipreqs
+	pipreqs . --force
