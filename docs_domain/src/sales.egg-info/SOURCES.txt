@@ -1,0 +1,7 @@
+README.md
+setup.py
+src/sales.egg-info/PKG-INFO
+src/sales.egg-info/SOURCES.txt
+src/sales.egg-info/dependency_links.txt
+src/sales.egg-info/top_level.txt
+tests/test_sales.py
