@@ -1,0 +1,124 @@
+import re
+from urllib.parse import parse_qs
+from jinja2 import Environment, FileSystemLoader
+from pathlib import Path
+
+base_path = Path(__file__).parent
+
+def render_template(template_path: str, **kwargs):
+    env = Environment(loader=FileSystemLoader(base_path))
+    template = env.get_template(template_path)
+    return template.render(kwargs)
+
+class Errors(Exception):
+    def __init__(self, message:str = 'Сервер столкнулся с непредвиденной внутренней ошибкой'):
+        self.message = message
+        self.code = 500
+        self.status_code = '500 Internal Server Error'
+
+class DBErrors(Errors):
+    def __init__(self, message:str = 'Ошибка при работе с базой данных'):
+        self.message = message
+        self.code = 418
+        self.status_code = "418 I'm a teapot"
+
+class DBNotFound(DBErrors):
+    def __init__(self, message:str = 'Запрашиваемый ресурс не найден'):
+        self.message = message
+        self.code = 404
+        self.status_code = '404 Not Found'
+        
+class DBUnrecoverableError(DBErrors):
+    def __init__(self, message:str = 'Ошибка в базе данных. Возможно запрос составлен некорректно'):
+        self.message = message
+        self.code = 456
+        self.status_code = '456 Unrecoverable Error'
+
+class Redirect():
+    def __init__(self, redirect_link):
+        self.redirect_link = redirect_link
+
+class App():
+    def __init__(self):
+        self.routes = {
+            'GET':{},
+            'POST':{},
+            'PATCH':{},
+            'DELETE':{},
+            'PUT':{},
+            'HEAD':{},
+            'OPTIONS':{}
+            }
+
+    def route(self,path: str, request_method: str = 'GET'):
+
+        def wrapper(handler):
+            self.routes[request_method][path] = handler
+            return handler
+
+        return wrapper
+    
+    def _dict_values_to_elem(self, dict: dict)->dict:
+        redict = {}
+        for key in dict.keys():
+            redict[key] = dict[key][0]
+        return redict
+    
+    def __call__(self, environ: dict, start_response):
+        response_body = '404 NOT FOUND'
+        status = '404 NOT FOUND'
+        parametrs = {}
+
+        path = environ.get('PATH_INFO','/')
+        mask = re.compile(r'(<[A-Za-z]+>)')
+
+        request_method = environ['REQUEST_METHOD']
+        query_string = environ['QUERY_STRING']
+
+        for route in self.routes[request_method]:
+            
+            new_mask = re.sub(mask,r'(?P<\1>[^/]+)',route)
+            res = re.fullmatch(new_mask,path)
+            if res:
+
+                parametrs.update(res.groupdict())
+                handler = self.routes[request_method][route]
+
+                if request_method == 'POST':
+                    content_length = int(environ.get('CONTENT_LENGTH',0))
+                    request_body = environ['wsgi.input'].read(content_length).decode('utf-8')
+                    parametrs.update(self._dict_values_to_elem(parse_qs(request_body)))
+                    
+
+                if query_string:
+                    parametrs.update(self._dict_values_to_elem(parse_qs(query_string)))
+                try: 
+                    if parametrs:
+                            response_body = handler(**parametrs)
+
+                    else:
+                        response_body = handler()
+                    
+                    status = '200 OK'
+
+                except Errors as e:
+                    status = e.status_code
+                    response_body = render_template('error_page.html', code = e.code, message = e.message)
+                
+                except Exception as e:
+                    status = '500 Internal Server Error'
+                    response_body = render_template('error_page.html', code = 500, message = 'Сервер столкнулся с непредвиденной внутренней ошибкой')
+                break
+
+        if 'static' in path:
+            headers = [('Content-Type', 'text/css')]
+        else:
+            headers = [('Content-Type', 'text/html; charset=utf-8')]
+        if isinstance(response_body, Redirect):
+            status = '302 Redirect'
+            headers = [('Location', response_body.redirect_link)]
+            response_body = ''
+        
+        start_response(status, headers)
+
+        return [response_body.encode('utf-8')]
