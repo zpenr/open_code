@@ -8,8 +8,11 @@ def parse_record(line:str):
 
     product_name = sale[0]
     category = sale[1]
-    unit_price = float(sale[2])
-    quantity = int(sale[3])
+    try:
+        unit_price = float(sale[2])
+        quantity = int(sale[3])
+    except ValueError as e:
+        return None
 
     return {
         "name": product_name, 
