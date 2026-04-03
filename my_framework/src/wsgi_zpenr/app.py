@@ -70,7 +70,7 @@ class App():
         parametrs = {}
 
         path = environ.get('PATH_INFO','/')
-        mask = re.compile(r'(<[A-Za-z]+>)')
+        mask = re.compile(r'<([A-Za-z]+)>')
 
         request_method = environ['REQUEST_METHOD']
         query_string = environ['QUERY_STRING']
@@ -105,7 +105,7 @@ class App():
                     status = e.status_code
                     response_body = render_template('error_page.html', code = e.code, message = e.message)
                 
-                except Exception as e:
+                except Exception:
                     status = '500 Internal Server Error'
                     response_body = render_template('error_page.html', code = 500, message = 'Сервер столкнулся с непредвиденной внутренней ошибкой')
                 break
