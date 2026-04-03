@@ -1,11 +1,23 @@
 [project]
-name = "wsgi_lib"
-version = "0.1.0"
+name = "wsgi_zpenr"
+version = "0.1.1"
 description = "A zpenr WSGI framework"
-dependencies = ["jinja2>=3.1.0","requests>=2.31.0",]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["jinja2>=3.1.0",]
 
 [tool.mypy]
 python_version = "3.12"
 
 [tool.ruff]
 line-length = 88
+
+[project.urls]
+"Homepage" = "https://github.com/zpenr/open_code/tree/wsgi/my_framework"
+
+[tool.setuptools.package-data]
+"*" = ["*.html", "*.css"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build-meta"
