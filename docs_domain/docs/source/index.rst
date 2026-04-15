@@ -12,5 +12,9 @@ This docs describe salesparsingg lib.
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-   
+
    QUICKSTART
+   HOW_TOCONTRIBUTE
+
+.. include:: ../DOMAIN.md
+   :parser: myst_parser.sphinx_
