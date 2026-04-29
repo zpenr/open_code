@@ -1,0 +1,20 @@
+[project]
+name = "product-service"
+version = "0.1.0"
+description = "Product service app"
+authors = [
+    {name = "Myasnikov Vadim",email = "zpenr@bk.ru"}
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi (>=0.136.1,<0.137.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "uvicorn (>=0.46.0,<0.47.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
