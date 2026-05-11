@@ -1,8 +1,7 @@
-import os
-
 import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from typing import Optional
 
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -11,10 +10,16 @@ from .database import get_order, init_db, save_order
 from .settings import get_settings
 
 
+settings = get_settings()
+PRODUCT_SERVICE_URL = settings.product_service_url
+DISCOUNT_SERVICE_URL = settings.discount_service_url
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     yield
+
 
 app = FastAPI(
     title="Order Service",
@@ -22,22 +27,21 @@ app = FastAPI(
 )
 
 
-PRODUCT_SERVICE_URL = os.getenv(
-    "PRODUCT_SERVICE_URL",
-    "http://127.0.0.1:8001",
-)
-
-
 class OrderRequest(BaseModel):
     product_id: str
     quantity: int = Field(gt=0)
+    promocode: Optional[str] = None
 
 
 class OrderResponse(BaseModel):
     product_id: str
     quantity: int
     unit_price: float
+    subtotal: float
+    discount_percent: int
+    discount_amount: float
     total: float
+    discount_reason: str
 
 
 class StoredOrderResponse(BaseModel):
@@ -55,6 +59,11 @@ class ProductFromService(BaseModel):
     price: float
     available: bool
 
+  
+class DiscountFromService(BaseModel):
+    discount_percent: int
+    reason: str
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -71,9 +80,17 @@ async def create_order(order: OrderRequest) -> OrderResponse:
             detail=f"Product '{order.product_id}' is not available",
         )
 
-    total = product.price * order.quantity
+    subtotal = round(product.price * order.quantity, 2)
+    discount = await fetch_discount(
+        product_id=product.id,
+        quantity=order.quantity,
+        unit_price=product.price,
+        promocode=order.promocode,
+    )
+    discount_amount = round(subtotal * discount.discount_percent / 100, 2)
+    total = round(subtotal - discount_amount, 2)
 
-    order_id = save_order(
+    save_order(
         {
             "product_id": product.id,
             "quantity": order.quantity,
@@ -86,8 +103,13 @@ async def create_order(order: OrderRequest) -> OrderResponse:
         product_id=product.id,
         quantity=order.quantity,
         unit_price=product.price,
+        subtotal=subtotal,
+        discount_percent=discount.discount_percent,
+        discount_amount=discount_amount,
         total=total,
+        discount_reason=discount.reason,
     )
+
 
 @app.get("/orders/{order_id}", response_model=StoredOrderResponse)
 def read_order(order_id: int) -> StoredOrderResponse:
@@ -107,7 +129,6 @@ def read_order(order_id: int) -> StoredOrderResponse:
         total=float(saved_order["total"]),
         created_at=saved_order["created_at"],
     )
-
 
 
 async def fetch_product(product_id: str) -> ProductFromService:
@@ -136,3 +157,40 @@ async def fetch_product(product_id: str) -> ProductFromService:
         )
 
     return ProductFromService.model_validate(response.json())
+
+
+async def fetch_discount(
+    product_id: str,
+    quantity: int,
+    unit_price: float,
+    promocode: Optional[str] = None,
+) -> DiscountFromService:
+    payload = {
+        "product_id": product_id,
+        "quantity": quantity,
+        "unit_price": unit_price,
+    }
+
+    if promocode:
+        payload["promocode"] = promocode
+
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            response = await client.post(
+                f"{DISCOUNT_SERVICE_URL}/discounts/calculate",
+                json=payload,
+            )
+
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Discount service is unavailable: {exc}",
+        ) from exc
+
+    if response.status_code >= 400:
+        raise HTTPException(
+            status_code=502,
+            detail="Discount service returned an unexpected error",
+        )
+
+    return DiscountFromService.model_validate(response.json())

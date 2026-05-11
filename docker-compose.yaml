@@ -1,38 +1,43 @@
 services:
-  product:
+  product-service:
     build:
       context: ./product_service
       dockerfile: Dockerfile
-    image: product_service
-    container_name: product_service
-    ports:
-      - "8001:8000"
+    image: product-service
+    container_name: product-service
     networks:
       - service-net
 
-  order:
+  discount-service:
+    build:
+      context: ./discount_service
+      dockerfile: Dockerfile
+    image: discount-service
+    container_name: discount-service
+    networks:
+      - service-net
+
+  order-service:
     build:
       context: ./order_service
       dockerfile: Dockerfile
-    image: order_service
-    container_name: order_service
+    image: order-service
+    container_name: order-service
     ports:
       - "8002:8000"
     environment:
-      PRODUCT_SERVICE_URL: http://product_service:8000
+      PRODUCT_SERVICE_URL: http://product-service:8000
+      DISCOUNT_SERVICE_URL: http://discount-service:8000
       DATABASE_URL: postgres://app:app@db:5432/orders
     depends_on:
-      product:
-        condition: service_started
-      db:
-        condition: service_healthy
+      - product-service
+      - discount-service
+      - db
     networks:
       - service-net
 
   db:
     image: postgres:16
-    ports: 
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app -d orders"]
       interval: 1m30s
@@ -46,7 +51,7 @@ services:
     volumes:
       - order-db:/var/lib/postgresql/data
     networks:
-      - service-net 
+      - service-net
 
 networks:
   service-net:
